@@ -12,16 +12,16 @@ import java.util.stream.IntStream;
 
 
 /**
- * TODO РџСЂРѕРІРµСЂСЊС‚Рµ, С‡С‚Рѕ РІР°С€ Р»РёРјРёС‚РµСЂ РєРѕСЂСЂРµРєС‚РЅРѕ СЂР°Р±РѕС‚Р°РµС‚.
+ * TODO Проверьте, что ваш лимитер корректно работает.
  * <p>
- * РџСЂРµРґРїРѕР»Р°РіР°РµС‚СЃСЏ, С‡С‚Рѕ РµСЃС‚СЊ РєР°РєРѕРµ-С‚Рѕ Р·Р°РґР°РЅРЅРѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ РїРѕС‚РѕРєРѕРІ-РѕР±СЂР°Р±РѕС‚С‡РёРєРѕРІ, РєРѕС‚РѕСЂС‹Рµ РІС‹РїРѕР»РЅСЏСЋС‚ Р·Р°РґР°С‡Сѓ {@link PrintTask}:
+ * Предполагается, что есть какое-то заданное количество потоков-обработчиков, которые выполняют задачу {@link PrintTask}:
  * <p>
- * Р•СЃР»Рё РЅРµ РїРѕР»СЊР·РѕРІР°С‚СЊСЃСЏ Р»РёРјРёС‚РµСЂРѕРј, С‚Рѕ РєР°Р¶РґС‹Р№ РїРѕС‚РѕРє Р±СѓРґРµС‚ РІС‹РІРѕРґРёС‚СЊ РЅР° СЌРєСЂР°РЅ РїРѕ 10 Р·Р°РїРёСЃРµР№ РІ СЃРµРєСѓРЅРґСѓ
+ * Если не пользоваться лимитером, то каждый поток будет выводить на экран по 10 записей в секунду
  * <p>
- * РўСЂРµР±СѓРµС‚СЃСЏ РѕРіСЂР°РЅРёС‡РёС‚СЊ РѕР±С‰РёР№ РІС‹РІРѕРґ СЃ РїРѕРјРѕС‰СЊСЋ РѕРєРѕРЅРЅРѕРіРѕ Р»РёРјРёС‚РµСЂР°,
- * С‡С‚РѕР±С‹ РєРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РїРёСЃРµР№ РЅР° СЌРєСЂР°РЅРµ РЅРµ РїСЂРµРІС‹С€Р°Р»Рѕ Р·Р°РґР°РЅРЅРѕРµ Р»РёРјРёС‚РµСЂРѕРј.
+ * Требуется ограничить общий вывод с помощью оконного лимитера,
+ * чтобы количество записей на экране не превышало заданное лимитером.
  * <p>
- * Р”Р»СЏ СЌС‚РѕРіРѕ СЂРµР°Р»РёР·СѓР№С‚Рµ {@link RateLimiter}.accept() РІ РєР»Р°СЃСЃРµ {@link WindowRateLimiter}
+ * Для этого реализуйте {@link RateLimiter}.accept() в классе {@link WindowRateLimiter}
  */
 class RateLimiterTest {
 
@@ -29,11 +29,11 @@ class RateLimiterTest {
 
     private static final RateLimiter limiter = new WindowRateLimiter(rate);
 
-    //TODO РќР°РїРёС€РёС‚Рµ РїСЂРѕРІРµСЂРєСѓ, С‡С‚Рѕ РІС‹РІРѕРґ РІ РєР°Р¶РґСѓСЋ СЃРµРєСѓРЅРґСѓ РЅРµ РїСЂРµРІС‹С€Р°РµС‚ Р·Р°РґР°РЅРЅРѕРµ С‡РёСЃР»Рѕ РѕРїРµСЂР°С†РёР№ (rate).
+    //TODO Напишите проверку, что вывод в каждую секунду не превышает заданное число операций (rate).
     @Test
     void should_LimitNumberOfOutputEventsPerSecondToRateValue_When_WindowRateLimiterIsApplied() throws InterruptedException {
 
-        //РІСЂРµРјРµРЅРЅС‹Рµ СЂР°РјРєРё РґР»СЏ С‚РµСЃС‚Р°: 5 СЃРµРєСѓРЅРґ
+        //временные рамки для теста: 5 секунд
         LocalTime startTime = LocalTime.now();
         LocalTime finishTime = startTime.plus(5, ChronoUnit.SECONDS);
 
@@ -41,7 +41,7 @@ class RateLimiterTest {
         System.out.println("finish at " + finishTime);
         System.out.println("--------------------");
 
-        //Р—Р°РїСѓСЃРєР°РµРј Р·Р°РґР°РЅРёСЏ, РєР°Р¶РґРѕРµ РІ СЃРІРѕРµРј РїРѕС‚РѕРєРµ
+        //Запускаем задания, каждое в своем потоке
         int nTasks = 10;
 
         ExecutorService executorService = Executors.newFixedThreadPool(nTasks);
@@ -52,29 +52,26 @@ class RateLimiterTest {
                 .map(Executors::callable)
                 .forEach(executorService::submit);
 
-        //Р”Р°РЅРЅС‹Р№ Р±Р»РѕРє РєРѕРґР° РїРѕРјРѕРіР°РµС‚ РІРёР·СѓР°Р»РёР·РёСЂРѕРІР°С‚СЊ, СЃРєРѕР»СЊРєРѕ РѕРїРµСЂР°С†РёР№ Р±С‹Р»Рѕ РІС‹РїРѕР»РЅРµРЅРѕ РІ СЃРµРєСѓРЅРґСѓ
+        //Данный блок кода помогает визуализировать, сколько операций было выполнено в секунду
         while (LocalTime.now().isBefore(finishTime)) {
             Thread.sleep(1000);
 
             int delta = LocalTime.now().getSecond() - startTime.getSecond();
-            System.out.println("--------------------------  [РџСЂРѕС€Р»Рѕ СЃРµРєСѓРЅРґ: " + delta + "] -----------------------------");
+            System.out.println("--------------------------  [Прошло секунд: " + delta + "] -----------------------------");
         }
 
         executorService.shutdownNow();
-
-        //Your assertions...
-
     }
 
-    //TODO РќР°РїРёС€РёС‚Рµ С‚РµСЃС‚ РґР»СЏ СЃР»СѓС‡Р°СЏ rate = 0
+    //TODO Напишите тест для случая rate = 0
     @Test
     void should_BlockAllOutputEvents_When_RateEqualsZero() {
 
     }
 
     /**
-     * Р—Р°РґР°РЅРёРµ РїРѕ РІС‹РІРѕРґСѓ РЅР° СЌРєСЂР°РЅ Р·Р°РґР°РЅРЅРѕР№ СЃС‚СЂРѕРєРё РєР°Р¶РґС‹Рµ 100 РјР»СЃРµРє (10 СЂР°Р· РІ СЃРµРєСѓРЅРґСѓ)
-     * TODO РјРѕРґРёС„РёС†РёСЂСѓР№С‚Рµ РґР°РЅРЅС‹Р№ РєР»Р°СЃСЃ РїРѕРґ С‚СЂРµР±РѕРІР°РЅРёСЏ Р·Р°РґР°С‡Рё
+     * Задание по выводу на экран заданной строки каждые 100 млсек (10 раз в секунду)
+     * TODO модифицируйте данный класс под требования задачи
      */
     static class PrintTask implements Runnable {
 
@@ -82,6 +79,10 @@ class RateLimiterTest {
 
         private PrintTask(String name) {
             this.name = name;
+        }
+
+        static PrintTask create(String name) {
+            return new PrintTask("Задание: " + name);
         }
 
         @Override
@@ -94,19 +95,16 @@ class RateLimiterTest {
                 attempt++;
                 try {
                     Thread.sleep(100);
-
                 } catch (InterruptedException e) {
                     System.out.println("Thread" + Thread.currentThread().getName() + "  is interrupted");
                     Thread.currentThread().interrupt();
                     break;
                 }
-                long fromStart = Duration.between(startTime, LocalTime.now()).toMillis();
-                System.out.println(name + ": РЅРѕРјРµСЂ РїРѕРїС‹С‚РєРё РІС‹РІРѕРґР°: " + attempt + " РІСЂРµРјСЏ РїРѕСЃР»Рµ СЃС‚Р°СЂС‚Р° [РјСЃ]: " + fromStart);
+                if (limiter.accept()) {
+                    long fromStart = Duration.between(startTime, LocalTime.now()).toMillis();
+                    System.out.println(name + ": номер попытки вывода: " + attempt + " время после старта [мс]: " + fromStart);
+                }
             }
-        }
-
-        static PrintTask create(String name) {
-            return new PrintTask("Р—Р°РґР°РЅРёРµ: " + name);
         }
     }
 }
